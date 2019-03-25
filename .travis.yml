@@ -2,7 +2,7 @@ language: cpp
 os:
 - osx
 sudo: required
-osx_image: xcode10.1
+osx_image: xcode8
 git:
   submodules: false
 addons:
