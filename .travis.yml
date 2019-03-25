@@ -9,7 +9,7 @@ addons:
   ssh_known_hosts:
   - github.com
 before_install:
-- brew update; brew install freetype
+#- brew update; brew install freetype
 - curl --retry 5 --connect-timeout 30 --location --remote-header-name --remote-name http://downloads.sourceforge.net/irrlicht/irrlicht-1.8.4.zip; unzip -q irrlicht-1.8.4.zip
 - cp -r irrlicht-1.8.4/source/Irrlicht/MacOSX source/Irrlicht/
 
