@@ -496,7 +496,7 @@ CIrrDeviceMacOSX::CIrrDeviceMacOSX(const SIrrlichtCreationParameters& param)
 		{
 			[[NSAutoreleasePool alloc] init];
 			[NSApplication sharedApplication];
-			[NSApp setDelegate:(id<NSFileManagerDelegate>)[[[AppDelegate alloc] initWithDevice:this] autorelease]];
+			[NSApp setDelegate:[[[[AppDelegate alloc] initWithDevice:this] initWithFrame:NSZeroRect] autorelease]];
 			[NSBundle loadNibNamed:@"MainMenu" owner:[NSApp delegate]];
 			[NSApp finishLaunching];
 		}
@@ -590,6 +590,38 @@ void CIrrDeviceMacOSX::closeDevice()
 	IsFullscreen = false;
 	IsActive = false;
 	CGLContext = NULL;
+}
+
+void CIrrDeviceMacOSX::processKeyEvent()
+{
+	irr::SEvent ievent;
+	NSEvent *event = [[NSApplication sharedApplication] currentEvent];
+	postKeyEvent(event, ievent, true);
+}
+
+void CIrrDeviceMacOSX::handleInputEvent(const char *cStr)
+{
+	SEvent ievent;
+
+	// TODO: we should have such a function in core::string
+	size_t lenOld = strlen(cStr);
+	wchar_t *ws = new wchar_t[lenOld + 1];
+	size_t len = mbstowcs(ws,cStr,lenOld);
+	ws[len] = 0;
+	irr::core::stringw widep(ws);
+	delete[] ws;
+
+	ievent.EventType = irr::EET_KEY_INPUT_EVENT;
+	ievent.KeyInput.Key = (irr::EKEY_CODE)0;
+	ievent.KeyInput.PressedDown = true;
+	ievent.KeyInput.Shift = false;
+	ievent.KeyInput.Control = false;
+
+	for (int i = 0; i < widep.size(); ++i)
+	{
+		ievent.KeyInput.Char = widep[i];
+		postEventFromUser(ievent);
+	}
 }
 
 bool CIrrDeviceMacOSX::createWindow()
@@ -881,6 +913,8 @@ bool CIrrDeviceMacOSX::createWindow()
 			newSwapInterval = (CreationParams.Vsync) ? 1 : 0;
 			CGLSetParameter(CGLContext,kCGLCPSwapInterval,&newSwapInterval);
 		}
+
+		[[Window contentView] addSubview:(AppDelegate*)[NSApp delegate]];
 	}
 
 	return (result);
@@ -971,6 +1005,33 @@ bool CIrrDeviceMacOSX::run()
 	os::Timer::tick();
 	storeMouseLocation();
 
+	auto focusElement = getGUIEnvironment()->getFocus();
+	bool editing = focusElement && focusElement->getType() == irr::gui::EGUIET_EDIT_BOX;
+
+	if (!editing)
+	{
+		[Window makeFirstResponder:nil];
+	}
+	else
+	{
+		auto textView = (NSTextView*)[NSApp delegate];
+		auto crect = focusElement->getAbsolutePosition();
+
+		// ensure font height enough to fill the rect, otherwize ime window will overlaps the edit box
+		[textView setFont:[NSFont userFontOfSize:crect.getHeight()]];
+
+		// change origin from top left to bottom right
+		NSRect rect = {
+			crect.UpperLeftCorner.X,
+			[[textView superview] frame].size.height - crect.LowerRightCorner.Y,
+			crect.getWidth(), crect.getHeight(),
+		};
+		[textView setFrame:rect];
+
+		// start to receive input events
+		[Window makeFirstResponder:textView];
+	}
+
 	event = [NSApp nextEventMatchingMask:NSAnyEventMask untilDate:[NSDate distantPast] inMode:NSDefaultRunLoopMode dequeue:YES];
 	if (event != nil)
 	{
@@ -979,6 +1040,13 @@ bool CIrrDeviceMacOSX::run()
 		switch([(NSEvent *)event type])
 		{
 			case NSKeyDown:
+				if (editing)
+				{
+					// delegate to text edit control to handle text input
+					[NSApp sendEvent:event];
+					break;
+				}
+
 				postKeyEvent(event,ievent,true);
 				break;
 
@@ -1199,20 +1267,20 @@ void CIrrDeviceMacOSX::postKeyEvent(void *event,irr::SEvent &ievent,bool pressed
 			}
 			else
 			{
-				cStr = (unsigned char *)[str cStringUsingEncoding:NSWindowsCP1252StringEncoding];
+				cStr = (unsigned char *)[str UTF8String];
 				if (cStr != NULL && strlen((char*)cStr) > 0)
 				{
 					mchar = cStr[0];
 					mkey = toupper(mchar);
-					if ([(NSEvent *)event modifierFlags] & NSCommandKeyMask)
-					{
-						if (mkey == 'C' || mkey == 'V' || mkey == 'X')
-						{
-							mchar = 0;
-							skipCommand = true;
-						}
-					}
 				}
+			}
+		}
+		if ([(NSEvent *)event modifierFlags] & NSCommandKeyMask)
+		{
+			if (mkey == 'C' || mkey == 'V' || mkey == 'X')
+			{
+				mchar = 0;
+				skipCommand = true;
 			}
 		}
 

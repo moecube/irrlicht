@@ -287,9 +287,11 @@ bool CGUIEditBox::processKey(const SEvent& event)
 				const s32 realmbgn = MarkBegin < MarkEnd ? MarkBegin : MarkEnd;
 				const s32 realmend = MarkBegin < MarkEnd ? MarkEnd : MarkBegin;
 
-				core::stringc s;
-				s = Text.subString(realmbgn, realmend - realmbgn).c_str();
-				Operator->copyToClipboard(s.c_str());
+				const int max_char_size = sizeof(wchar_t) * 3 / 2;
+				int max_size = (realmend - realmbgn)*max_char_size + 1;
+				c8 *s = new char[max_size];
+				wcstombs(s, Text.subString(realmbgn, realmend-realmbgn).c_str(), max_size);
+				Operator->copyToClipboard(s);
 			}
 			break;
 		case KEY_KEY_X:
@@ -300,9 +302,11 @@ bool CGUIEditBox::processKey(const SEvent& event)
 				const s32 realmend = MarkBegin < MarkEnd ? MarkEnd : MarkBegin;
 
 				// copy
-				core::stringc sc;
-				sc = Text.subString(realmbgn, realmend - realmbgn).c_str();
-				Operator->copyToClipboard(sc.c_str());
+				const int max_char_size = sizeof(wchar_t) * 3 / 2;
+				int max_size = (realmend - realmbgn)*max_char_size + 1;
+				c8 *s = new char[max_size];
+				wcstombs(s, Text.subString(realmbgn, realmend-realmbgn).c_str(), max_size);
+				Operator->copyToClipboard(s);
 
 				if (isEnabled())
 				{

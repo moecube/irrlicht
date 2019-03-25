@@ -74,6 +74,30 @@
 	return (_quit);
 }
 
+
+- (void)keyDown:(NSEvent *)event
+{
+	[self interpretKeyEvents:@[event]];
+}
+
+- (void)insertText:(id)string
+{
+	[self setString: @""];
+	if ([string isKindOfClass:[NSAttributedString class]])
+	{
+		_device->handleInputEvent([[string string] UTF8String]);
+	}
+	else
+	{
+		_device->handleInputEvent([string UTF8String]);
+	}
+}
+
+- (void)doCommandBySelector:(SEL)selector
+{
+	_device->processKeyEvent();
+}
+
 @end
 
 #endif // _IRR_COMPILE_WITH_OSX_DEVICE_
