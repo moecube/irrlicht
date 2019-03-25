@@ -11,6 +11,7 @@ addons:
 before_install:
 #- brew update; brew install freetype
 - curl --retry 5 --connect-timeout 30 --location --remote-header-name --remote-name http://downloads.sourceforge.net/irrlicht/irrlicht-1.8.4.zip; unzip -q irrlicht-1.8.4.zip
+- cd irrlicht-1.8.4/
 #- cp -r irrlicht-1.8.4/source/Irrlicht/MacOSX source/Irrlicht/
 #- cp -r irrlicht-1.8.4/source/Irrlicht/CD3D8* source/Irrlicht/
 
