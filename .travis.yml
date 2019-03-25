@@ -1,0 +1,34 @@
+language: cpp
+os:
+- osx
+env:
+  global:
+  - USE_IRRKLANG: 1
+sudo: required
+osx_image: xcode10.1
+git:
+  submodules: false
+addons:
+  ssh_known_hosts:
+  - github.com
+before_install:
+- brew update; brew install freetype
+
+script:
+- cd source/Irrlicht/MacOSX/
+- xcodebuild -project MacOSX.xcodeproj
+#before_deploy:
+#- cp build/Release/libIrrlicht.a /usr/local/lib/ ;  cp -r ../../../include /usr/local/include/irrlicht ; cd ../../../../
+#deploy:
+#  provider: releases
+#  file:
+#  - irrlicht-mycard-mac.tar.gz
+#  skip_cleanup: true
+#  on:
+#    tags: true
+#  api-key:
+#    secure: j7YxYAyoQr1albVJIypwloeJXtZMj11FtqmCDyJ8QGiFk2431o0KMNvN1tC2pK/x08ntN5iVzwEfWh7owDSBeu1HDJo7H7w69s5Rt3UfJE4bw5G2RM6P#hG8ZQBwIPkXyXULPTjj3YQRFvcPdBusndQVPhFe/staGLa/t+KOzMyw=
+branches:
+  only:
+  - master
+  - mac-1.8.4
