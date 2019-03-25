@@ -1,9 +1,6 @@
 language: cpp
 os:
 - osx
-env:
-  global:
-  - USE_IRRKLANG: 1
 sudo: required
 osx_image: xcode10.1
 git:
