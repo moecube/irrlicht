@@ -153,7 +153,7 @@ void CBillboardSceneNode::setSize(f32 height, f32 bottomEdgeWidth, f32 topEdgeWi
 {
 	Size.set(bottomEdgeWidth, height);
 	TopEdgeWidth = topEdgeWidth;
-
+ 
 	if (core::equals(Size.Height, 0.0f))
 		Size.Height = 1.0f;
 
@@ -197,7 +197,7 @@ void CBillboardSceneNode::getSize(f32& height, f32& bottomEdgeWidth,
 	bottomEdgeWidth = Size.Width;
 	topEdgeWidth = TopEdgeWidth;
 }
-
+ 
 
 //! Writes attributes of the scene node.
 void CBillboardSceneNode::serializeAttributes(io::IAttributes* out, io::SAttributeReadWriteOptions* options) const
@@ -281,12 +281,7 @@ ISceneNode* CBillboardSceneNode::clone(ISceneNode* newParent, ISceneManager* new
 
 	nb->cloneMembers(this, newManager);
 	nb->Material = Material;
-	nb->Size = Size;
 	nb->TopEdgeWidth = this->TopEdgeWidth;
-
-	video::SColor topColor,bottomColor;
-	getColor(topColor,bottomColor);
-	nb->setColor(topColor,bottomColor);
 
 	if ( newParent )
 		nb->drop();

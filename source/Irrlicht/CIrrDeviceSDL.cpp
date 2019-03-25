@@ -28,6 +28,12 @@ namespace irr
 {
 	namespace video
 	{
+
+		#ifdef _IRR_COMPILE_WITH_DIRECT3D_8_
+		IVideoDriver* createDirectX8Driver(const irr::SIrrlichtCreationParameters& params,
+			io::IFileSystem* io, HWND window);
+		#endif
+
 		#ifdef _IRR_COMPILE_WITH_DIRECT3D_9_
 		IVideoDriver* createDirectX9Driver(const irr::SIrrlichtCreationParameters& params,
 			io::IFileSystem* io, HWND window);
@@ -212,8 +218,18 @@ void CIrrDeviceSDL::createDriver()
 {
 	switch(CreationParams.DriverType)
 	{
-	case video::DEPRECATED_EDT_DIRECT3D8_NO_LONGER_EXISTS:
-		os::Printer::log("DIRECT3D8 Driver is no longer supported in Irrlicht. Try another one.", ELL_ERROR);
+	case video::EDT_DIRECT3D8:
+		#ifdef _IRR_COMPILE_WITH_DIRECT3D_8_
+
+		VideoDriver = video::createDirectX8Driver(CreationParams, FileSystem, HWnd);
+		if (!VideoDriver)
+		{
+			os::Printer::log("Could not create DIRECT3D8 Driver.", ELL_ERROR);
+		}
+		#else
+		os::Printer::log("DIRECT3D8 Driver was not compiled into this dll. Try another one.", ELL_ERROR);
+		#endif // _IRR_COMPILE_WITH_DIRECT3D_8_
+
 		break;
 
 	case video::EDT_DIRECT3D9:
@@ -735,12 +751,6 @@ void CIrrDeviceSDL::minimizeWindow()
 void CIrrDeviceSDL::maximizeWindow()
 {
 	// do nothing
-}
-
-//! Get the position of this window on screen
-core::position2di CIrrDeviceSDL::getWindowPosition()
-{
-    return core::position2di(-1, -1);
 }
 
 

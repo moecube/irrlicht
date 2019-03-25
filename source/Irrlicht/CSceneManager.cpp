@@ -15,8 +15,6 @@
 #include "IReadFile.h"
 #include "IWriteFile.h"
 #include "ISceneLoader.h"
-#include "EProfileIDs.h"
-#include "IProfiler.h"
 
 #include "os.h"
 
@@ -134,10 +132,6 @@
 #include "CPLYMeshWriter.h"
 #endif
 
-#ifdef _IRR_COMPILE_WITH_B3D_WRITER_
-#include "CB3DMeshWriter.h"
-#endif
-
 #include "CCubeSceneNode.h"
 #include "CSphereSceneNode.h"
 #include "CAnimatedMeshSceneNode.h"
@@ -190,8 +184,8 @@ CSceneManager::CSceneManager(video::IVideoDriver* driver, io::IFileSystem* fs,
 		gui::IGUIEnvironment* gui)
 : ISceneNode(0, 0), Driver(driver), FileSystem(fs), GUIEnvironment(gui),
 	CursorControl(cursorControl), CollisionManager(0),
-	ActiveCamera(0), ShadowColor(150,0,0,0), AmbientLight(0,0,0,0), Parameters(0),
-	MeshCache(cache), CurrentRenderPass(ESNRP_NONE), LightManager(0),
+	ActiveCamera(0), ShadowColor(150,0,0,0), AmbientLight(0,0,0,0),
+	MeshCache(cache), CurrentRendertime(ESNRP_NONE), LightManager(0),
 	IRR_XML_FORMAT_SCENE(L"irr_scene"), IRR_XML_FORMAT_NODE(L"node"), IRR_XML_FORMAT_NODE_ATTR_TYPE(L"type")
 {
 	#ifdef _DEBUG
@@ -201,6 +195,10 @@ CSceneManager::CSceneManager(video::IVideoDriver* driver, io::IFileSystem* fs,
 
 	// root node's scene manager
 	SceneManager = this;
+
+	// set scene parameters
+	Parameters.setAttribute( DEBUG_NORMAL_LENGTH, 1.f );
+	Parameters.setAttribute( DEBUG_NORMAL_COLOR, video::SColor(255, 34, 221, 221));
 
 	if (Driver)
 		Driver->grab();
@@ -219,11 +217,6 @@ CSceneManager::CSceneManager(video::IVideoDriver* driver, io::IFileSystem* fs,
 		MeshCache = new CMeshCache();
 	else
 		MeshCache->grab();
-
-	// set scene parameters
-	Parameters = new io::CAttributes();
-	Parameters->setAttribute(DEBUG_NORMAL_LENGTH, 1.f);
-	Parameters->setAttribute(DEBUG_NORMAL_COLOR, video::SColor(255, 34, 221, 221));
 
 	// create collision manager
 	CollisionManager = new CSceneCollisionManager(this, Driver);
@@ -244,7 +237,7 @@ CSceneManager::CSceneManager(video::IVideoDriver* driver, io::IFileSystem* fs,
 	MeshLoaderList.push_back(new CPLYMeshFileLoader(this));
 	#endif
 	#ifdef _IRR_COMPILE_WITH_SMF_LOADER_
-	MeshLoaderList.push_back(new CSMFMeshFileLoader(FileSystem, Driver));
+	MeshLoaderList.push_back(new CSMFMeshFileLoader(Driver));
 	#endif
 	#ifdef _IRR_COMPILE_WITH_OCT_LOADER_
 	MeshLoaderList.push_back(new COCTLoader(this, FileSystem));
@@ -253,7 +246,7 @@ CSceneManager::CSceneManager(video::IVideoDriver* driver, io::IFileSystem* fs,
 	MeshLoaderList.push_back(new CCSMLoader(this, FileSystem));
 	#endif
 	#ifdef _IRR_COMPILE_WITH_LMTS_LOADER_
-	MeshLoaderList.push_back(new CLMTSMeshFileLoader(FileSystem, Driver, Parameters));
+	MeshLoaderList.push_back(new CLMTSMeshFileLoader(FileSystem, Driver, &Parameters));
 	#endif
 	#ifdef _IRR_COMPILE_WITH_MY3D_LOADER_
 	MeshLoaderList.push_back(new CMY3DMeshFileLoader(this, FileSystem));
@@ -306,6 +299,7 @@ CSceneManager::CSceneManager(video::IVideoDriver* driver, io::IFileSystem* fs,
 	SceneLoaderList.push_back(new CSceneLoaderIrr(this, FileSystem));
 	#endif
 
+
 	// factories
 	ISceneNodeFactory* factory = new CDefaultSceneNodeFactory(this);
 	registerSceneNodeFactory(factory);
@@ -314,24 +308,6 @@ CSceneManager::CSceneManager(video::IVideoDriver* driver, io::IFileSystem* fs,
 	ISceneNodeAnimatorFactory* animatorFactory = new CDefaultSceneNodeAnimatorFactory(this, CursorControl);
 	registerSceneNodeAnimatorFactory(animatorFactory);
 	animatorFactory->drop();
-
-	IRR_PROFILE(
-		static bool initProfile = false;
-		if (!initProfile )
-		{
-			initProfile = true;
-			getProfiler().add(EPID_SM_DRAW_ALL, L"drawAll", L"Irrlicht scene");
-			getProfiler().add(EPID_SM_ANIMATE, L"animate", L"Irrlicht scene");
-			getProfiler().add(EPID_SM_RENDER_CAMERAS, L"cameras", L"Irrlicht scene");
-			getProfiler().add(EPID_SM_RENDER_LIGHTS, L"lights", L"Irrlicht scene");
-			getProfiler().add(EPID_SM_RENDER_SKYBOXES, L"skyboxes", L"Irrlicht scene");
-			getProfiler().add(EPID_SM_RENDER_DEFAULT, L"defaultnodes", L"Irrlicht scene");
-			getProfiler().add(EPID_SM_RENDER_SHADOWS, L"shadows", L"Irrlicht scene");
-			getProfiler().add(EPID_SM_RENDER_TRANSPARENT, L"transp.nodes", L"Irrlicht scene");
-			getProfiler().add(EPID_SM_RENDER_EFFECT, L"effectnodes", L"Irrlicht scene");
-			getProfiler().add(EPID_SM_REGISTER, L"reg.render.node", L"Irrlicht scene");
-		}
- 	)
 }
 
 
@@ -374,9 +350,6 @@ CSceneManager::~CSceneManager()
 
 	if (MeshCache)
 		MeshCache->drop();
-
-	if (Parameters)
-		Parameters->drop();
 
 	for (i=0; i<SceneNodeFactoryList.size(); ++i)
 		SceneNodeFactoryList[i]->drop();
@@ -1174,10 +1147,10 @@ void CSceneManager::render()
 //! returns the axis aligned bounding box of this node
 const core::aabbox3d<f32>& CSceneManager::getBoundingBox() const
 {
-	_IRR_DEBUG_BREAK_IF(true) // Bounding Box of Scene Manager should never be used.
+	_IRR_DEBUG_BREAK_IF(true) // Bounding Box of Scene Manager wanted.
 
-	static const core::aabbox3d<f32> dummy;
-	return dummy;
+	// should never be used.
+	return *((core::aabbox3d<f32>*)0);
 }
 
 
@@ -1187,6 +1160,7 @@ bool CSceneManager::isCulled(const ISceneNode* node) const
 	const ICameraSceneNode* cam = getActiveCamera();
 	if (!cam)
 	{
+		_IRR_IMPLEMENT_MANAGED_MARSHALLING_BUGFIX;
 		return false;
 	}
 	bool result = false;
@@ -1207,18 +1181,7 @@ bool CSceneManager::isCulled(const ISceneNode* node) const
 
 	// can be seen by a bounding sphere
 	if (!result && (node->getAutomaticCulling() & scene::EAC_FRUSTUM_SPHERE))
-	{
-		const core::aabbox3df nbox = node->getTransformedBoundingBox();
-		const float rad = nbox.getRadius();
-		const core::vector3df center = nbox.getCenter();
-
-		const float camrad = cam->getViewFrustum()->getBoundingRadius();
-		const core::vector3df camcenter = cam->getViewFrustum()->getBoundingCenter();
-
-		const float dist = (center - camcenter).getLengthSQ();
-		const float maxdist = (rad + camrad) * (rad + camrad);
-
-		result = dist > maxdist;
+	{ // requires bbox diameter
 	}
 
 	// can be seen by cam pyramid planes ?
@@ -1254,6 +1217,7 @@ bool CSceneManager::isCulled(const ISceneNode* node) const
 		}
 	}
 
+	_IRR_IMPLEMENT_MANAGED_MARSHALLING_BUGFIX;
 	return result;
 }
 
@@ -1261,7 +1225,6 @@ bool CSceneManager::isCulled(const ISceneNode* node) const
 //! registers a node for rendering it at a specific time.
 u32 CSceneManager::registerNodeForRendering(ISceneNode* node, E_SCENE_NODE_RENDER_PASS pass)
 {
-	IRR_PROFILE(CProfileScope p1(EPID_SM_REGISTER);)
 	u32 taken = 0;
 
 	switch(pass)
@@ -1330,7 +1293,7 @@ u32 CSceneManager::registerNodeForRendering(ISceneNode* node, E_SCENE_NODE_RENDE
 			{
 				video::IMaterialRenderer* rnd =
 					Driver->getMaterialRenderer(node->getMaterial(i).MaterialType);
-				if ((rnd && rnd->isTransparent()) || node->getMaterial(i).isTransparent())
+				if (rnd && rnd->isTransparent())
 				{
 					// register as transparent node
 					TransparentNodeEntry e(node, camWorldPos);
@@ -1361,13 +1324,13 @@ u32 CSceneManager::registerNodeForRendering(ISceneNode* node, E_SCENE_NODE_RENDE
 	}
 
 #ifdef _IRR_SCENEMANAGER_DEBUG
-	s32 index = Parameters->findAttribute("calls");
-	Parameters->setAttribute(index, Parameters->getAttributeAsInt(index)+1);
+	s32 index = Parameters.findAttribute ( "calls" );
+	Parameters.setAttribute ( index, Parameters.getAttributeAsInt ( index ) + 1 );
 
 	if (!taken)
 	{
-		index = Parameters->findAttribute("culled");
-		Parameters->setAttribute(index, Parameters->getAttributeAsInt(index)+1);
+		index = Parameters.findAttribute ( "culled" );
+		Parameters.setAttribute ( index, Parameters.getAttributeAsInt ( index ) + 1 );
 	}
 #endif
 
@@ -1379,18 +1342,16 @@ u32 CSceneManager::registerNodeForRendering(ISceneNode* node, E_SCENE_NODE_RENDE
 //! draws all scene nodes
 void CSceneManager::drawAll()
 {
-	IRR_PROFILE(CProfileScope psAll(EPID_SM_DRAW_ALL);)
-
 	if (!Driver)
 		return;
 
 #ifdef _IRR_SCENEMANAGER_DEBUG
 	// reset attributes
-	Parameters->setAttribute("culled", 0);
-	Parameters->setAttribute("calls", 0);
-	Parameters->setAttribute("drawn_solid", 0);
-	Parameters->setAttribute("drawn_transparent", 0);
-	Parameters->setAttribute("drawn_transparent_effect", 0);
+	Parameters.setAttribute ( "culled", 0 );
+	Parameters.setAttribute ( "calls", 0 );
+	Parameters.setAttribute ( "drawn_solid", 0 );
+	Parameters.setAttribute ( "drawn_transparent", 0 );
+	Parameters.setAttribute ( "drawn_transparent_effect", 0 );
 #endif
 
 	u32 i; // new ISO for scoping problem in some compilers
@@ -1402,26 +1363,23 @@ void CSceneManager::drawAll()
 	Driver->setTransform ( video::ETS_WORLD, core::IdentityMatrix );
 	for (i=video::ETS_COUNT-1; i>=video::ETS_TEXTURE_0; --i)
 		Driver->setTransform ( (video::E_TRANSFORMATION_STATE)i, core::IdentityMatrix );
+
 	// TODO: This should not use an attribute here but a real parameter when necessary (too slow!)
-	Driver->setAllowZWriteOnTransparent(Parameters->getAttributeAsBool(ALLOW_ZWRITE_ON_TRANSPARENT));
+	Driver->setAllowZWriteOnTransparent(Parameters.getAttributeAsBool( ALLOW_ZWRITE_ON_TRANSPARENT) );
 
 	// do animations and other stuff.
-	IRR_PROFILE(getProfiler().start(EPID_SM_ANIMATE));
 	OnAnimate(os::Timer::getTime());
-	IRR_PROFILE(getProfiler().stop(EPID_SM_ANIMATE));
 
 	/*!
 		First Scene Node for prerendering should be the active camera
 		consistent Camera is needed for culling
 	*/
-	IRR_PROFILE(getProfiler().start(EPID_SM_RENDER_CAMERAS));
 	camWorldPos.set(0,0,0);
 	if (ActiveCamera)
 	{
 		ActiveCamera->render();
 		camWorldPos = ActiveCamera->getAbsolutePosition();
 	}
-	IRR_PROFILE(getProfiler().stop(EPID_SM_RENDER_CAMERAS));
 
 	// let all nodes register themselves
 	OnRegisterSceneNode();
@@ -1431,12 +1389,11 @@ void CSceneManager::drawAll()
 
 	//render camera scenes
 	{
-		IRR_PROFILE(CProfileScope psCam(EPID_SM_RENDER_CAMERAS);)
-		CurrentRenderPass = ESNRP_CAMERA;
-		Driver->getOverrideMaterial().Enabled = ((Driver->getOverrideMaterial().EnablePasses & CurrentRenderPass) != 0);
+		CurrentRendertime = ESNRP_CAMERA;
+		Driver->getOverrideMaterial().Enabled = ((Driver->getOverrideMaterial().EnablePasses & CurrentRendertime) != 0);
 
 		if (LightManager)
-			LightManager->OnRenderPassPreRender(CurrentRenderPass);
+			LightManager->OnRenderPassPreRender(CurrentRendertime);
 
 		for (i=0; i<CameraList.size(); ++i)
 			CameraList[i]->render();
@@ -1444,18 +1401,17 @@ void CSceneManager::drawAll()
 		CameraList.set_used(0);
 
 		if (LightManager)
-			LightManager->OnRenderPassPostRender(CurrentRenderPass);
+			LightManager->OnRenderPassPostRender(CurrentRendertime);
 	}
 
 	//render lights scenes
 	{
-		IRR_PROFILE(CProfileScope psLights(EPID_SM_RENDER_LIGHTS);)
-		CurrentRenderPass = ESNRP_LIGHT;
-		Driver->getOverrideMaterial().Enabled = ((Driver->getOverrideMaterial().EnablePasses & CurrentRenderPass) != 0);
+		CurrentRendertime = ESNRP_LIGHT;
+		Driver->getOverrideMaterial().Enabled = ((Driver->getOverrideMaterial().EnablePasses & CurrentRendertime) != 0);
 
 		if (LightManager)
 		{
-			LightManager->OnRenderPassPreRender(CurrentRenderPass);
+			LightManager->OnRenderPassPreRender(CurrentRendertime);
 		}
 		else
 		{
@@ -1489,18 +1445,17 @@ void CSceneManager::drawAll()
 			LightList[i]->render();
 
 		if (LightManager)
-			LightManager->OnRenderPassPostRender(CurrentRenderPass);
+			LightManager->OnRenderPassPostRender(CurrentRendertime);
 	}
 
 	// render skyboxes
 	{
-		IRR_PROFILE(CProfileScope psSkyBox(EPID_SM_RENDER_SKYBOXES);)
-		CurrentRenderPass = ESNRP_SKY_BOX;
-		Driver->getOverrideMaterial().Enabled = ((Driver->getOverrideMaterial().EnablePasses & CurrentRenderPass) != 0);
+		CurrentRendertime = ESNRP_SKY_BOX;
+		Driver->getOverrideMaterial().Enabled = ((Driver->getOverrideMaterial().EnablePasses & CurrentRendertime) != 0);
 
 		if (LightManager)
 		{
-			LightManager->OnRenderPassPreRender(CurrentRenderPass);
+			LightManager->OnRenderPassPreRender(CurrentRendertime);
 			for (i=0; i<SkyBoxList.size(); ++i)
 			{
 				ISceneNode* node = SkyBoxList[i];
@@ -1518,21 +1473,20 @@ void CSceneManager::drawAll()
 		SkyBoxList.set_used(0);
 
 		if (LightManager)
-			LightManager->OnRenderPassPostRender(CurrentRenderPass);
+			LightManager->OnRenderPassPostRender(CurrentRendertime);
 	}
 
 
 	// render default objects
 	{
-		IRR_PROFILE(CProfileScope psDefault(EPID_SM_RENDER_DEFAULT);)
-		CurrentRenderPass = ESNRP_SOLID;
-		Driver->getOverrideMaterial().Enabled = ((Driver->getOverrideMaterial().EnablePasses & CurrentRenderPass) != 0);
+		CurrentRendertime = ESNRP_SOLID;
+		Driver->getOverrideMaterial().Enabled = ((Driver->getOverrideMaterial().EnablePasses & CurrentRendertime) != 0);
 
 		SolidNodeList.sort(); // sort by textures
 
 		if (LightManager)
 		{
-			LightManager->OnRenderPassPreRender(CurrentRenderPass);
+			LightManager->OnRenderPassPreRender(CurrentRendertime);
 			for (i=0; i<SolidNodeList.size(); ++i)
 			{
 				ISceneNode* node = SolidNodeList[i].Node;
@@ -1548,23 +1502,22 @@ void CSceneManager::drawAll()
 		}
 
 #ifdef _IRR_SCENEMANAGER_DEBUG
-		Parameters->setAttribute("drawn_solid", (s32) SolidNodeList.size() );
+		Parameters.setAttribute("drawn_solid", (s32) SolidNodeList.size() );
 #endif
 		SolidNodeList.set_used(0);
 
 		if (LightManager)
-			LightManager->OnRenderPassPostRender(CurrentRenderPass);
+			LightManager->OnRenderPassPostRender(CurrentRendertime);
 	}
 
 	// render shadows
 	{
-		IRR_PROFILE(CProfileScope psShadow(EPID_SM_RENDER_SHADOWS);)
-		CurrentRenderPass = ESNRP_SHADOW;
-		Driver->getOverrideMaterial().Enabled = ((Driver->getOverrideMaterial().EnablePasses & CurrentRenderPass) != 0);
+		CurrentRendertime = ESNRP_SHADOW;
+		Driver->getOverrideMaterial().Enabled = ((Driver->getOverrideMaterial().EnablePasses & CurrentRendertime) != 0);
 
 		if (LightManager)
 		{
-			LightManager->OnRenderPassPreRender(CurrentRenderPass);
+			LightManager->OnRenderPassPreRender(CurrentRendertime);
 			for (i=0; i<ShadowNodeList.size(); ++i)
 			{
 				ISceneNode* node = ShadowNodeList[i];
@@ -1586,19 +1539,18 @@ void CSceneManager::drawAll()
 		ShadowNodeList.set_used(0);
 
 		if (LightManager)
-			LightManager->OnRenderPassPostRender(CurrentRenderPass);
+			LightManager->OnRenderPassPostRender(CurrentRendertime);
 	}
 
 	// render transparent objects.
 	{
-		IRR_PROFILE(CProfileScope psTrans(EPID_SM_RENDER_TRANSPARENT);)
-		CurrentRenderPass = ESNRP_TRANSPARENT;
-		Driver->getOverrideMaterial().Enabled = ((Driver->getOverrideMaterial().EnablePasses & CurrentRenderPass) != 0);
+		CurrentRendertime = ESNRP_TRANSPARENT;
+		Driver->getOverrideMaterial().Enabled = ((Driver->getOverrideMaterial().EnablePasses & CurrentRendertime) != 0);
 
 		TransparentNodeList.sort(); // sort by distance from camera
 		if (LightManager)
 		{
-			LightManager->OnRenderPassPreRender(CurrentRenderPass);
+			LightManager->OnRenderPassPreRender(CurrentRendertime);
 
 			for (i=0; i<TransparentNodeList.size(); ++i)
 			{
@@ -1615,25 +1567,24 @@ void CSceneManager::drawAll()
 		}
 
 #ifdef _IRR_SCENEMANAGER_DEBUG
-		Parameters->setAttribute ( "drawn_transparent", (s32) TransparentNodeList.size() );
+		Parameters.setAttribute ( "drawn_transparent", (s32) TransparentNodeList.size() );
 #endif
 		TransparentNodeList.set_used(0);
 
 		if (LightManager)
-			LightManager->OnRenderPassPostRender(CurrentRenderPass);
+			LightManager->OnRenderPassPostRender(CurrentRendertime);
 	}
 
 	// render transparent effect objects.
 	{
-		IRR_PROFILE(CProfileScope psEffect(EPID_SM_RENDER_EFFECT);)
-		CurrentRenderPass = ESNRP_TRANSPARENT_EFFECT;
-		Driver->getOverrideMaterial().Enabled = ((Driver->getOverrideMaterial().EnablePasses & CurrentRenderPass) != 0);
+		CurrentRendertime = ESNRP_TRANSPARENT_EFFECT;
+		Driver->getOverrideMaterial().Enabled = ((Driver->getOverrideMaterial().EnablePasses & CurrentRendertime) != 0);
 
 		TransparentEffectNodeList.sort(); // sort by distance from camera
 
 		if (LightManager)
 		{
-			LightManager->OnRenderPassPreRender(CurrentRenderPass);
+			LightManager->OnRenderPassPreRender(CurrentRendertime);
 
 			for (i=0; i<TransparentEffectNodeList.size(); ++i)
 			{
@@ -1649,7 +1600,7 @@ void CSceneManager::drawAll()
 				TransparentEffectNodeList[i].Node->render();
 		}
 #ifdef _IRR_SCENEMANAGER_DEBUG
-		Parameters->setAttribute("drawn_transparent_effect", (s32) TransparentEffectNodeList.size());
+		Parameters.setAttribute ( "drawn_transparent_effect", (s32) TransparentEffectNodeList.size() );
 #endif
 		TransparentEffectNodeList.set_used(0);
 	}
@@ -1660,7 +1611,7 @@ void CSceneManager::drawAll()
 	LightList.set_used(0);
 	clearDeletionList();
 
-	CurrentRenderPass = ESNRP_NONE;
+	CurrentRendertime = ESNRP_NONE;
 }
 
 void CSceneManager::setLightManager(ILightManager* lightManager)
@@ -2029,6 +1980,7 @@ bool CSceneManager::postEventFromUser(const SEvent& event)
 	if (cam)
 		ret = cam->OnEvent(event);
 
+	_IRR_IMPLEMENT_MANAGED_MARSHALLING_BUGFIX;
 	return ret;
 }
 
@@ -2054,14 +2006,14 @@ void CSceneManager::clear()
 //! Returns interface to the parameters set in this scene.
 io::IAttributes* CSceneManager::getParameters()
 {
-	return Parameters;
+	return &Parameters;
 }
 
 
 //! Returns current render pass.
 E_SCENE_NODE_RENDER_PASS CSceneManager::getSceneNodeRenderPass() const
 {
-	return CurrentRenderPass;
+	return CurrentRendertime;
 }
 
 
@@ -2167,6 +2119,7 @@ bool CSceneManager::saveScene(const io::path& filename, ISceneUserDataSerializer
 	else
 		os::Printer::log("Unable to open file", filename, ELL_ERROR);
 
+	_IRR_IMPLEMENT_MANAGED_MARSHALLING_BUGFIX;
 	return ret;
 }
 
@@ -2546,13 +2499,6 @@ IMeshWriter* CSceneManager::createMeshWriter(EMESH_WRITER_TYPE type)
 	case EMWT_PLY:
 #ifdef _IRR_COMPILE_WITH_PLY_WRITER_
 		return new CPLYMeshWriter();
-#else
-		return 0;
-#endif
-
-	case EMWT_B3D:
-#ifdef _IRR_COMPILE_WITH_B3D_WRITER_
-		return new CB3DMeshWriter(FileSystem);
 #else
 		return 0;
 #endif

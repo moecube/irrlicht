@@ -20,11 +20,9 @@
 #if defined(_IRR_COMPILE_WITH_X11_DEVICE_)
 #include "CIrrDeviceLinux.h"
 #endif
-#if defined(_IRR_COMPILE_WITH_OSX_DEVICE_)
-#import <Cocoa/Cocoa.h>
+#ifdef _IRR_COMPILE_WITH_OSX_DEVICE_
+#include "MacOSX/OSXClipboard.h"
 #endif
-
-#include "fast_atof.h"
 
 namespace irr
 {
@@ -79,18 +77,11 @@ void COSOperator::copyToClipboard(const c8* text) const
 	SetClipboardData(CF_TEXT, clipbuffer);
 	CloseClipboard();
 
+// MacOSX version
 #elif defined(_IRR_COMPILE_WITH_OSX_DEVICE_)
-    NSString *str = nil;
-    NSPasteboard *board = nil;
-    
-    if ((text != NULL) && (strlen(text) > 0))
-    {
-        str = [NSString stringWithCString:text encoding:NSWindowsCP1252StringEncoding];
-        board = [NSPasteboard generalPasteboard];
-        [board declareTypes:[NSArray arrayWithObject:NSStringPboardType] owner:NSApp];
-        [board setString:str forType:NSStringPboardType];
-    }
-    
+
+	OSXCopyToClipboard(text);
+
 #elif defined(_IRR_COMPILE_WITH_X11_DEVICE_)
     if ( IrrDeviceLinux )
         IrrDeviceLinux->copyToClipboard(text);
@@ -119,17 +110,7 @@ const c8* COSOperator::getTextFromClipboard() const
 	return buffer;
 
 #elif defined(_IRR_COMPILE_WITH_OSX_DEVICE_)
-    NSString* str = nil;
-    NSPasteboard* board = nil;
-    char* result = 0;
-
-    board = [NSPasteboard generalPasteboard];
-    str = [board stringForType:NSStringPboardType];
-    
-    if (str != nil)
-        result = (char*)[str cStringUsingEncoding:NSWindowsCP1252StringEncoding];
-    
-    return (result);
+	return (OSXCopyFromClipboard());
 
 #elif defined(_IRR_COMPILE_WITH_X11_DEVICE_)
     if ( IrrDeviceLinux )
@@ -145,8 +126,6 @@ const c8* COSOperator::getTextFromClipboard() const
 
 bool COSOperator::getProcessorSpeedMHz(u32* MHz) const
 {
-	if (MHz)
-		*MHz=0;
 #if defined(_IRR_WINDOWS_API_) && !defined(_WIN32_WCE ) && !defined (_IRR_XBOX_PLATFORM_)
 	LONG Error;
 
@@ -168,6 +147,7 @@ bool COSOperator::getProcessorSpeedMHz(u32* MHz) const
 		return false;
 	else if (MHz)
 		*MHz = Speed;
+	_IRR_IMPLEMENT_MANAGED_MARSHALLING_BUGFIX;
 	return true;
 
 #elif defined(_IRR_OSX_PLATFORM_)
@@ -181,25 +161,8 @@ bool COSOperator::getProcessorSpeedMHz(u32* MHz) const
 	return true;
 #else
 	// could probably be read from "/proc/cpuinfo" or "/proc/cpufreq"
-	FILE* file = fopen("/proc/cpuinfo", "r");
-	if (file)
-	{
-		char buffer[1024];
-		fread(buffer, 1, 1024, file);
-		buffer[1023]=0;
-		core::stringc str(buffer);
-		s32 pos = str.find("cpu MHz");
-		if (pos != -1)
-		{
-			pos = str.findNext(':', pos);
-			if (pos != -1)
-			{
-				*MHz = core::fast_atof(str.c_str()+pos+1);
-			}
-		}
-		fclose(file);
-	}
-	return (*MHz != 0);
+
+	return false;
 #endif
 }
 
@@ -217,6 +180,7 @@ bool COSOperator::getSystemMemory(u32* Total, u32* Avail) const
 	if (Avail)
 		*Avail = (u32)(MemoryStatus.dwAvailPhys>>10);
 
+	_IRR_IMPLEMENT_MANAGED_MARSHALLING_BUGFIX;
 	return true;
 
 #elif defined(_IRR_POSIX_API_) && !defined(__FreeBSD__)
@@ -237,19 +201,8 @@ bool COSOperator::getSystemMemory(u32* Total, u32* Avail) const
 	// TODO: implement for non-availablity of symbols/features
 	return false;
 #endif
-#elif defined(_IRR_OSX_PLATFORM_)
-	int mib[2];
-	int64_t physical_memory;
-	size_t length;
-
-	// Get the Physical memory size
-	mib[0] = CTL_HW;
-	mib[1] = HW_MEMSIZE;
-	length = sizeof(int64_t);
-	sysctl(mib, 2, &physical_memory, &length, NULL, 0);
-	return true;
 #else
-	// TODO: implement for others
+	// TODO: implement for OSX
 	return false;
 #endif
 }

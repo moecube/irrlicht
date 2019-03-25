@@ -19,10 +19,10 @@ namespace scene
 CSceneNodeAnimatorCameraFPS::CSceneNodeAnimatorCameraFPS(gui::ICursorControl* cursorControl,
 		f32 rotateSpeed, f32 moveSpeed, f32 jumpSpeed,
 		SKeyMap* keyMapArray, u32 keyMapSize, bool noVerticalMovement, bool invertY)
-: CursorControl(cursorControl), MaxVerticalAngle(88.0f), NoVerticalMovement(noVerticalMovement),
+: CursorControl(cursorControl), MaxVerticalAngle(88.0f),
 	MoveSpeed(moveSpeed), RotateSpeed(rotateSpeed), JumpSpeed(jumpSpeed),
 	MouseYDirection(invertY ? -1.0f : 1.0f),
-	LastAnimationTime(0), firstUpdate(true), firstInput(true)
+	LastAnimationTime(0), firstUpdate(true), firstInput(true), NoVerticalMovement(noVerticalMovement)
 {
 	#ifdef _DEBUG
 	setDebugName("CCameraSceneNodeAnimatorFPS");
@@ -82,8 +82,7 @@ bool CSceneNodeAnimatorCameraFPS::OnEvent(const SEvent& evt)
 	case EET_MOUSE_INPUT_EVENT:
 		if (evt.MouseInput.Event == EMIE_MOUSE_MOVED)
 		{
-			if ( CursorControl )
-				CursorPos = CursorControl->getRelativePosition();
+			CursorPos = CursorControl->getRelativePosition();
 			return true;
 		}
 		break;
@@ -346,59 +345,8 @@ ISceneNodeAnimator* CSceneNodeAnimatorCameraFPS::createClone(ISceneNode* node, I
 	CSceneNodeAnimatorCameraFPS * newAnimator =
 		new CSceneNodeAnimatorCameraFPS(CursorControl,	RotateSpeed, MoveSpeed, JumpSpeed,
 											0, 0, NoVerticalMovement);
-	newAnimator->cloneMembers(this);
 	newAnimator->setKeyMap(KeyMap);
 	return newAnimator;
-}
-
-void CSceneNodeAnimatorCameraFPS::serializeAttributes(io::IAttributes* out, io::SAttributeReadWriteOptions* options) const
-{
-	ISceneNodeAnimator::serializeAttributes(out, options);
-
-	out->addFloat("MaxVerticalAngle", MaxVerticalAngle);
-	out->addBool("NoVerticalMovement", NoVerticalMovement);
-	out->addFloat("MoveSpeed", MoveSpeed);
-	out->addFloat("RotateSpeed", RotateSpeed);
-	out->addFloat("JumpSpeed", JumpSpeed);
-	out->addFloat("MouseYDirection", MouseYDirection);
-
-	out->addInt("KeyMapSize", (s32)KeyMap.size());
-	for ( u32 i=0; i < KeyMap.size(); ++i )
-	{
-		core::stringc name("Action");
-		name += core::stringc(i);
-		out->addInt(name.c_str(), (int)KeyMap[i].Action);
-		name = core::stringc("KeyCode") + core::stringc(i);
-		out->addInt(name.c_str(), (int)KeyMap[i].KeyCode);
-	}
-}
-
-void CSceneNodeAnimatorCameraFPS::deserializeAttributes(io::IAttributes* in, io::SAttributeReadWriteOptions* options)
-{
-	ISceneNodeAnimator::deserializeAttributes(in, options);
-
-	MaxVerticalAngle = in->getAttributeAsFloat("MaxVerticalAngle", MaxVerticalAngle);
-	NoVerticalMovement = in->getAttributeAsBool("NoVerticalMovement", NoVerticalMovement);
-	MoveSpeed = in->getAttributeAsFloat("MoveSpeed", MoveSpeed);
-	RotateSpeed = in->getAttributeAsFloat("RotateSpeed", RotateSpeed);
-	JumpSpeed = in->getAttributeAsFloat("JumpSpeed", JumpSpeed);
-	MouseYDirection = in->getAttributeAsFloat("MouseYDirection", MouseYDirection);
-
-	if ( in->findAttribute("KeyMapSize") )
-	{
-		KeyMap.clear();
-		s32 keyMapSize = in->getAttributeAsInt("KeyMapSize");
-		for ( u32 i=0; i < (u32)keyMapSize; ++i )
-		{
-			SKeyMap keyMapEntry;
-			core::stringc name("Action");
-			name += core::stringc(i);
-			keyMapEntry.Action = static_cast<EKEY_ACTION>(in->getAttributeAsInt(name.c_str()));
-			name = core::stringc("KeyCode") + core::stringc(i);
-			keyMapEntry.KeyCode = static_cast<EKEY_CODE>(in->getAttributeAsInt(name.c_str()));
-			KeyMap.push_back(keyMapEntry);
-		}
-	}
 }
 
 

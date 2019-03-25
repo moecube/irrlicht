@@ -87,11 +87,6 @@ void CSceneCollisionManager::getPickedNodeBB(ISceneNode* root,
 			if((noDebugObjects ? !current->isDebugObject() : true) &&
 				(bits==0 || (bits != 0 && (current->getID() & bits))))
 			{
-				// Assume that single-point bounding-boxes are not meant for collision
-				const core::aabbox3df & objectBox = current->getBoundingBox();
-				if ( objectBox.isEmpty() )
-					continue;
-
 				// get world to object space transform
 				core::matrix4 worldToObject;
 				if (!current->getAbsoluteTransformation().getInverse(worldToObject))
@@ -101,6 +96,8 @@ void CSceneCollisionManager::getPickedNodeBB(ISceneNode* root,
 				core::line3df objectRay(ray);
 				worldToObject.transformVect(objectRay.start);
 				worldToObject.transformVect(objectRay.end);
+
+				const core::aabbox3df & objectBox = current->getBoundingBox();
 
 				// Do the initial intersection test in object space, since the
 				// object space box test is more accurate.
@@ -225,7 +222,7 @@ void CSceneCollisionManager::getPickedNodeBB(ISceneNode* root,
 
 
 ISceneNode* CSceneCollisionManager::getSceneNodeAndCollisionPointFromRay(
-						const core::line3df& ray,
+						core::line3df ray,
 						core::vector3df & outCollisionPoint,
 						core::triangle3df & outTriangle,
 						s32 idBitMask,
@@ -261,8 +258,7 @@ ISceneNode* CSceneCollisionManager::getSceneNodeAndCollisionPointFromRay(
 	// node in order to find the nearest collision point, so sorting them by
 	// bounding box would be pointless.
 
-	core::line3df rayRest(ray);
-	getPickedNodeFromBBAndSelector(collisionRootNode, rayRest, idBitMask,
+	getPickedNodeFromBBAndSelector(collisionRootNode, ray, idBitMask,
 					noDebugObjects, bestDistanceSquared, bestNode,
 					outCollisionPoint, outTriangle);
 	return bestNode;
@@ -357,6 +353,7 @@ bool CSceneCollisionManager::getCollisionPoint(const core::line3d<f32>& ray,
 {
 	if (!selector)
 	{
+		_IRR_IMPLEMENT_MANAGED_MARSHALLING_BUGFIX;
 		return false;
 	}
 
@@ -415,6 +412,7 @@ bool CSceneCollisionManager::getCollisionPoint(const core::line3d<f32>& ray,
 		}
 	}
 
+	_IRR_IMPLEMENT_MANAGED_MARSHALLING_BUGFIX;
 	return found;
 }
 
@@ -756,7 +754,7 @@ core::vector3df CSceneCollisionManager::collideEllipsoidWithWorld(
 
 
 core::vector3df CSceneCollisionManager::collideWithWorld(s32 recursionDepth,
-	SCollisionData &colData, const core::vector3df& pos, const core::vector3df& vel)
+	SCollisionData &colData, core::vector3df pos, core::vector3df vel)
 {
 	f32 veryCloseDistance = colData.slidingSpeed;
 

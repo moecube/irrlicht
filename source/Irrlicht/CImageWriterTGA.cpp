@@ -97,7 +97,7 @@ bool CImageWriterTGA::writeImage(io::IWriteFile *file, IImage *image,u32 param) 
 	if (file->write(&imageHeader, sizeof(imageHeader)) != sizeof(imageHeader))
 		return false;
 
-	u8* scan_lines = (u8*)image->getData();
+	u8* scan_lines = (u8*)image->lock();
 	if (!scan_lines)
 		return false;
 
@@ -126,6 +126,8 @@ bool CImageWriterTGA::writeImage(io::IWriteFile *file, IImage *image,u32 param) 
 	}
 
 	delete [] row_pointer;
+
+	image->unlock();
 
 	STGAFooter imageFooter;
 	imageFooter.ExtensionOffset = 0;

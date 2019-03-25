@@ -201,9 +201,11 @@ bool CGUIContextMenu::isItemEnabled(u32 idx) const
 {
 	if (idx >= Items.size())
 	{
+		_IRR_IMPLEMENT_MANAGED_MARSHALLING_BUGFIX;
 		return false;
 	}
 
+	_IRR_IMPLEMENT_MANAGED_MARSHALLING_BUGFIX;
 	return Items[idx].Enabled;
 }
 
@@ -213,9 +215,11 @@ bool CGUIContextMenu::isItemChecked(u32 idx) const
 {
 	if (idx >= Items.size())
 	{
+		_IRR_IMPLEMENT_MANAGED_MARSHALLING_BUGFIX;
 		return false;
 	}
 
+	_IRR_IMPLEMENT_MANAGED_MARSHALLING_BUGFIX;
 	return Items[idx].Checked;
 }
 
