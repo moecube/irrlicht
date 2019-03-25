@@ -36,7 +36,6 @@
 #include "CMeshBuffer.h"
 #include "coreutil.h"
 #include "CVertexBuffer.h"
-#include "IProfiler.h"
 #include "dimension2d.h"
 #include "ECullingTypes.h"
 #include "EDebugSceneTypes.h"
@@ -64,7 +63,6 @@
 #include "IBillboardTextSceneNode.h"
 #include "IBoneSceneNode.h"
 #include "ICameraSceneNode.h"
-#include "IContextManager.h"
 #include "ICursorControl.h"
 #include "IDummyTransformationSceneNode.h"
 #include "IDynamicMeshBuffer.h"
@@ -99,7 +97,6 @@
 #include "IGUIToolbar.h"
 #include "IGUIWindow.h"
 #include "IGUITreeView.h"
-#include "IGUIProfiler.h"
 #include "IImage.h"
 #include "IImageLoader.h"
 #include "IImageWriter.h"
@@ -125,7 +122,6 @@
 #include "IReferenceCounted.h"
 #include "irrArray.h"
 #include "IRandomizer.h"
-#include "IRenderTarget.h"
 #include "IrrlichtDevice.h"
 #include "irrList.h"
 #include "irrMap.h"
@@ -191,7 +187,7 @@
 #include "vector2d.h"
 #include "vector3d.h"
 
-/*! \mainpage Irrlicht Engine 1.9 API documentation
+/*! \mainpage Irrlicht Engine 1.8 API documentation
  *
  * <div align="center"><img src="logobig.png" ></div>
  *
@@ -232,7 +228,7 @@
  * int main()
  * {
  *	// start up the engine
- *	IrrlichtDevice *device = createDevice(video::EDT_OPENGL,
+ *	IrrlichtDevice *device = createDevice(video::EDT_DIRECT3D8,
  *		core::dimension2d<u32>(640,480));
  *
  *	video::IVideoDriver* driver = device->getVideoDriver();
@@ -257,7 +253,7 @@
  *	// draw everything
  *	while(device->run() && driver)
  *	{
- *		driver->beginScene(video::ECBF_COLOR | video::ECBF_DEPTH, video::SColor(255,0,0,255));
+ *		driver->beginScene(true, true, video::SColor(255,0,0,255));
  *		scenemgr->drawAll();
  *		driver->endScene();
  *	}
@@ -311,7 +307,7 @@ namespace irr
 	/** If you need more parameters to be passed to the creation of the Irrlicht Engine device,
 	use the createDeviceEx() function.
 	\param deviceType: Type of the device. This can currently be video::EDT_NULL,
-	video::EDT_SOFTWARE, video::EDT_BURNINGSVIDEO, video::EDT_DIRECT3D9 and video::EDT_OPENGL.
+	video::EDT_SOFTWARE, video::EDT_BURNINGSVIDEO, video::EDT_DIRECT3D8, video::EDT_DIRECT3D9 and video::EDT_OPENGL.
 	\param windowSize: Size of the window or the video mode in fullscreen mode.
 	\param bits: Bits per pixel in fullscreen mode. Ignored if windowed mode.
 	\param fullscreen: Should be set to true if the device should run in fullscreen. Otherwise
@@ -329,9 +325,9 @@ namespace irr
 		video::E_DRIVER_TYPE deviceType = video::EDT_SOFTWARE,
 		// parantheses are necessary for some compilers
 		const core::dimension2d<u32>& windowSize = (core::dimension2d<u32>(640,480)),
-		u32 bits = 32,
+		u32 bits = 16,
 		bool fullscreen = false,
-		bool stencilbuffer = true,
+		bool stencilbuffer = false,
 		bool vsync = false,
 		IEventReceiver* receiver = 0);
 

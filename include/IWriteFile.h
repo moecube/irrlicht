@@ -38,11 +38,10 @@ namespace io
 		//! Get name of file.
 		/** \return File name as zero terminated character string. */
 		virtual const path& getFileName() const = 0;
-
-		//! Flush the content of the buffer in the file
-		/** \return True if successful, otherwise false. */
-		virtual bool flush() = 0;
 	};
+
+	//! Internal function, please do not use.
+	IWriteFile* createWriteFile(const io::path& fileName, bool append);
 
 } // end namespace io
 } // end namespace irr

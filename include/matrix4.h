@@ -173,15 +173,8 @@ namespace core
 			//! Make a rotation matrix from Euler angles. The 4th row and column are unmodified.
 			CMatrix4<T>& setRotationDegrees( const vector3d<T>& rotation );
 
-			//! Get the rotation, as set by setRotation() when you already know the scale.
-			/** If you already know the scale then this function is faster than the other getRotationDegrees overload.
-			NOTE: You will have the same end-rotation as used in setRotation, but it might not use the same axis values.
-			*/
-			core::vector3d<T> getRotationDegrees(const vector3d<T>& scale) const;
-
 			//! Returns the rotation, as set by setRotation().
-			/** NOTE: You will have the same end-rotation as used in setRotation, but it might not use the same axis values.
-			*/
+			/** This code was orginally written by by Chev. */
 			core::vector3d<T> getRotationDegrees() const;
 
 			//! Make an inverted rotation matrix from Euler angles.
@@ -372,11 +365,6 @@ namespace core
 			\return Altered matrix */
 			CMatrix4<T>& setTextureTranslate( f32 x, f32 y );
 
-			//! Get texture transformation translation
-			/** \param x returns offset on x axis
-			\param y returns offset on y axis */
-			void getTextureTranslate( f32& x, f32& y ) const;
-
 			//! Set texture transformation translation, using a transposed representation
 			/** Doesn't clear other elements than those affected.
 			\param x Offset on x axis
@@ -390,11 +378,6 @@ namespace core
 			\param sy Scale factor on y axis
 			\return Altered matrix. */
 			CMatrix4<T>& setTextureScale( f32 sx, f32 sy );
-
-			//! Get texture transformation scale
-			/** \param sx Returns x axis scale factor
-			\param sy Returns y axis scale factor */
-			void getTextureScale( f32& sx, f32& sy ) const;
 
 			//! Set texture transformation scale, and recenter at (0.5,0.5)
 			/** Doesn't clear other elements than those affected.
@@ -872,14 +855,12 @@ namespace core
 	//! Returns a rotation that is equivalent to that set by setRotationDegrees().
 	/** This code was sent in by Chev.  Note that it does not necessarily return
 	the *same* Euler angles as those set by setRotationDegrees(), but the rotation will
-	be equivalent, i.e. will have the same result when used to rotate a vector or node.
-	This code was orginally written by by Chev.
-	*/
+	be equivalent, i.e. will have the same result when used to rotate a vector or node. */
 	template <class T>
-	inline core::vector3d<T> CMatrix4<T>::getRotationDegrees(const vector3d<T>& scale_) const
+	inline core::vector3d<T> CMatrix4<T>::getRotationDegrees() const
 	{
 		const CMatrix4<T> &mat = *this;
-		core::vector3d<T> scale(scale_);
+		core::vector3d<T> scale = getScale();
 		// we need to check for negative scale on to axes, which would bring up wrong results
 		if (scale.Y<0 && scale.Z<0)
 		{
@@ -930,17 +911,6 @@ namespace core
 		return vector3d<T>((T)X,(T)Y,(T)Z);
 	}
 
-	//! Returns a rotation that is equivalent to that set by setRotationDegrees().
-	/** This code was sent in by Chev.  Note that it does not necessarily return
-	the *same* Euler angles as those set by setRotationDegrees(), but the rotation will
-	be equivalent, i.e. will have the same result when used to rotate a vector or node.
-	This code was orginally written by by Chev. */
-	template <class T>
-	inline core::vector3d<T> CMatrix4<T>::getRotationDegrees() const
-	{
-		return getRotationDegrees(getScale());
-	}
-
 
 	//! Sets matrix to rotation matrix of inverse angles given as parameters
 	template <class T>
@@ -977,18 +947,18 @@ namespace core
 	template <class T>
 	inline CMatrix4<T>& CMatrix4<T>::setRotationAxisRadians( const T& angle, const vector3d<T>& axis )
 	{
-		const f64 c = cos(angle);
+ 		const f64 c = cos(angle);
 		const f64 s = sin(angle);
 		const f64 t = 1.0 - c;
 
 		const f64 tx  = t * axis.X;
-		const f64 ty  = t * axis.Y;
+		const f64 ty  = t * axis.Y;		
 		const f64 tz  = t * axis.Z;
 
 		const f64 sx  = s * axis.X;
 		const f64 sy  = s * axis.Y;
 		const f64 sz  = s * axis.Z;
-
+		
 		M[0] = (T)(tx * axis.X + c);
 		M[1] = (T)(tx * axis.Y + sz);
 		M[2] = (T)(tx * axis.Z - sy);
@@ -2162,12 +2132,6 @@ namespace core
 		return *this;
 	}
 
-	template <class T>
-	inline void CMatrix4<T>::getTextureTranslate(f32& x, f32& y) const
-	{
-		x = (f32)M[8];
-		y = (f32)M[9];
-	}
 
 	template <class T>
 	inline CMatrix4<T>& CMatrix4<T>::setTextureTranslateTransposed ( f32 x, f32 y )
@@ -2176,7 +2140,7 @@ namespace core
 		M[6] = (T)y;
 
 #if defined ( USE_MATRIX_TEST )
-		definitelyIdentityMatrix = definitelyIdentityMatrix && (x==0.0f) && (y==0.0f);
+		definitelyIdentityMatrix = definitelyIdentityMatrix && (x==0.0f) && (y==0.0f) ;
 #endif
 		return *this;
 	}
@@ -2192,12 +2156,6 @@ namespace core
 		return *this;
 	}
 
-	template <class T>
-	inline void CMatrix4<T>::getTextureScale ( f32& sx, f32& sy ) const
-	{
-		sx = (f32)M[0];
-		sy = (f32)M[5];
-	}
 
 	template <class T>
 	inline CMatrix4<T>& CMatrix4<T>::setTextureScaleCenter( f32 sx, f32 sy )

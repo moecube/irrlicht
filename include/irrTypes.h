@@ -74,7 +74,7 @@ typedef signed int		s32;
 typedef unsigned __int64			u64;
 #elif __GNUC__
 #if __WORDSIZE == 64
-typedef unsigned long int			u64;
+typedef unsigned long int 			u64;
 #else
 __extension__ typedef unsigned long long	u64;
 #endif
@@ -88,7 +88,7 @@ typedef unsigned long long			u64;
 typedef __int64					s64;
 #elif __GNUC__
 #if __WORDSIZE == 64
-typedef long int				s64;
+typedef long int 				s64;
 #else
 __extension__ typedef long long			s64;
 #endif
@@ -113,16 +113,16 @@ typedef double				f64;
 
 #include <wchar.h>
 #ifdef _IRR_WINDOWS_API_
-//! Defines for s{w,n}printf_irr because s{w,n}printf methods do not match the ISO C
-//! standard on Windows platforms.
-//! We want int snprintf_irr(char *str, size_t size, const char *format, ...);
-//! and int swprintf_irr(wchar_t *wcs, size_t maxlen, const wchar_t *format, ...);
+//! Defines for s{w,n}printf because these methods do not match the ISO C
+//! standard on Windows platforms, but it does on all others.
+//! These should be int snprintf(char *str, size_t size, const char *format, ...);
+//! and int swprintf(wchar_t *wcs, size_t maxlen, const wchar_t *format, ...);
 #if defined(_MSC_VER) && _MSC_VER > 1310 && !defined (_WIN32_WCE)
-#define swprintf_irr swprintf_s
-#define snprintf_irr sprintf_s
+#define swprintf swprintf_s
+#define snprintf sprintf_s
 #elif !defined(__CYGWIN__)
-#define swprintf_irr _snwprintf
-#define snprintf_irr _snprintf
+#define swprintf _snwprintf
+#define snprintf _snprintf
 #endif
 
 // define the wchar_t type if not already built in.
@@ -140,9 +140,6 @@ typedef unsigned short wchar_t;
 #define _WCHAR_T_DEFINED
 #endif // wchar is not defined
 #endif // microsoft compiler
-#else
-#define swprintf_irr swprintf
-#define snprintf_irr snprintf
 #endif // _IRR_WINDOWS_API_
 
 namespace irr
@@ -167,18 +164,18 @@ strings
 //! define a break macro for debugging.
 #if defined(_DEBUG)
 #if defined(_IRR_WINDOWS_API_) && defined(_MSC_VER) && !defined (_WIN32_WCE)
-#if defined(WIN64) || defined(_WIN64) // using portable common solution for x64 configuration
-	#include <crtdbg.h>
-	#define _IRR_DEBUG_BREAK_IF( _CONDITION_ ) if (_CONDITION_) {_CrtDbgBreak();}
+  #if defined(WIN64) || defined(_WIN64) // using portable common solution for x64 configuration
+  #include <crtdbg.h>
+  #define _IRR_DEBUG_BREAK_IF( _CONDITION_ ) if (_CONDITION_) {_CrtDbgBreak();}
+  #else
+  #define _IRR_DEBUG_BREAK_IF( _CONDITION_ ) if (_CONDITION_) {_asm int 3}
+  #endif
 #else
-	#define _IRR_DEBUG_BREAK_IF( _CONDITION_ ) if (_CONDITION_) {_asm int 3}
+#include "assert.h"
+#define _IRR_DEBUG_BREAK_IF( _CONDITION_ ) assert( !(_CONDITION_) );
 #endif
 #else
-	#include "assert.h"
-	#define _IRR_DEBUG_BREAK_IF( _CONDITION_ ) assert( !(_CONDITION_) );
-#endif
-#else
-	#define _IRR_DEBUG_BREAK_IF( _CONDITION_ )
+#define _IRR_DEBUG_BREAK_IF( _CONDITION_ )
 #endif
 
 //! Defines a deprecated macro which generates a warning at compile time
@@ -198,19 +195,18 @@ For functions:		template<class T> _IRR_DEPRECATED_ void test4(void) {}
 #define _IRR_DEPRECATED_
 #endif
 
-//! Defines an override macro, to protect virtual functions from typos and other mismatches
-/** Usage in a derived class:
-virtual void somefunc() _IRR_OVERRIDE_;
-*/
-#if ( ((__GNUC__ > 4 ) || ((__GNUC__ == 4 ) && (__GNUC_MINOR__ >= 7))) && (defined(__GXX_EXPERIMENTAL_CXX0X) || __cplusplus >= 201103L) )
-#define _IRR_OVERRIDE_ override
-#elif (_MSC_VER >= 1600 ) /* supported since MSVC 2010 */
-#define _IRR_OVERRIDE_ override
-#elif (__clang_major__ >= 3)
-#define _IRR_OVERRIDE_ override
+//! Defines a small statement to work around a microsoft compiler bug.
+/** The microsoft compiler 7.0 - 7.1 has a bug:
+When you call unmanaged code that returns a bool type value of false from managed code,
+the return value may appear as true. See
+http://support.microsoft.com/default.aspx?kbid=823071 for details.
+Compiler version defines: VC6.0 : 1200, VC7.0 : 1300, VC7.1 : 1310, VC8.0 : 1400*/
+#if defined(_IRR_WINDOWS_API_) && defined(_MSC_VER) && (_MSC_VER > 1299) && (_MSC_VER < 1400)
+#define _IRR_IMPLEMENT_MANAGED_MARSHALLING_BUGFIX __asm mov eax,100
 #else
-#define _IRR_OVERRIDE_
-#endif
+#define _IRR_IMPLEMENT_MANAGED_MARSHALLING_BUGFIX
+#endif // _IRR_MANAGED_MARSHALLING_BUGFIX
+
 
 // memory debugging
 #if defined(_DEBUG) && defined(IRRLICHT_EXPORTS) && defined(_MSC_VER) && \
@@ -223,6 +219,12 @@ virtual void somefunc() _IRR_OVERRIDE_;
 	#include <crtdbg.h>
 	#define new DEBUG_CLIENTBLOCK
 #endif
+
+// disable truncated debug information warning in visual studio 6 by default
+#if defined(_MSC_VER) && (_MSC_VER < 1300 )
+#pragma warning( disable: 4786)
+#endif // _MSC
+
 
 //! ignore VC8 warning deprecated
 /** The microsoft compiler */

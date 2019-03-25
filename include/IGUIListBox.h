@@ -13,7 +13,6 @@ namespace irr
 namespace gui
 {
 	class IGUISpriteBank;
-	class IGUIScrollBar;
 
 	//! Enumeration for listbox colors
 	enum EGUI_LISTBOX_COLOR
@@ -129,9 +128,6 @@ namespace gui
 
 		//! Sets whether to draw the background
 		virtual void setDrawBackground(bool draw) = 0;
-
-		//! Access the vertical scrollbar
-		virtual IGUIScrollBar* getVerticalScrollBar() const = 0;
 };
 
 
