@@ -40,7 +40,7 @@ upload_to_minio:
   dependencies:
     - build
   tags: 
-    - pack
+    - linux
   image: python
   script:
     - pip install -U -i https://mirrors.aliyun.com/pypi/simple/ awscli
