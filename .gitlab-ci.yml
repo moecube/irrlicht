@@ -30,7 +30,7 @@ pack:
   script:
     - apt update; apt -y install tar
     - mkdir dist
-    - tar -zcvf irrlicht-mycard-mac.tar.gz libIrrlicht.a include
+    - tar -zcvf dist/irrlicht-mycard-mac.tar.gz libIrrlicht.a include
   artifacts:
     paths:
       - dist
